@@ -27,8 +27,27 @@ pub fn configure_overlay(window: &WebviewWindow, click_through: bool) -> Result<
     #[cfg(target_os = "macos")]
     {
         println!("[Platform] Running macOS-specific configuration...");
-        configure_overlay_macos(window, click_through)?;
-        println!("[Platform] macOS configuration completed");
+        // Use catch_unwind to gracefully handle any panics from Objective-C operations
+        // This prevents the entire app from crashing if macOS-specific configuration fails
+        let window_clone = window.clone();
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+            configure_overlay_macos(&window_clone, click_through)
+        })) {
+            Ok(Ok(())) => {
+                println!("[Platform] macOS configuration completed successfully");
+            }
+            Ok(Err(e)) => {
+                eprintln!("[Platform] macOS configuration failed (non-fatal): {}", e);
+                eprintln!("[Platform] Window will continue without enhanced overlay features");
+            }
+            Err(panic_info) => {
+                eprintln!(
+                    "[Platform] macOS configuration panicked (non-fatal): {:?}",
+                    panic_info
+                );
+                eprintln!("[Platform] Window will continue without enhanced overlay features");
+            }
+        }
     }
 
     #[cfg(target_os = "windows")]
@@ -172,48 +191,59 @@ pub fn set_unconstrained_position(
     // This is required because macOS window operations must happen on the main thread
     window
         .run_on_main_thread(move || {
-            use objc2::MainThreadMarker;
-            use objc2::rc::Retained;
-            use objc2_app_kit::{NSScreen, NSWindow};
-            use objc2_foundation::NSRect;
+            // Wrap in catch_unwind to prevent panics from crashing the app
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                use objc2::MainThreadMarker;
+                use objc2::rc::Retained;
+                use objc2_app_kit::{NSScreen, NSWindow};
+                use objc2_foundation::NSRect;
 
-            // SAFETY: We're now on the main thread (guaranteed by run_on_main_thread)
-            let mtm = unsafe { MainThreadMarker::new_unchecked() };
+                // SAFETY: We're now on the main thread (guaranteed by run_on_main_thread)
+                let mtm = unsafe { MainThreadMarker::new_unchecked() };
 
-            // Convert usize back to pointer
-            // SAFETY: The pointer is valid as long as the window exists
-            let ns_window: Option<Retained<NSWindow>> =
-                unsafe { Retained::retain(ptr_addr as *mut NSWindow) };
+                // Convert usize back to pointer
+                // SAFETY: The pointer is valid as long as the window exists
+                let ns_window: Option<Retained<NSWindow>> =
+                    unsafe { Retained::retain(ptr_addr as *mut NSWindow) };
 
-            let Some(ns_window) = ns_window else {
-                eprintln!("Failed to retain NSWindow pointer");
-                return;
-            };
+                let Some(ns_window) = ns_window else {
+                    eprintln!("[Platform/macOS] Failed to retain NSWindow pointer");
+                    return;
+                };
 
-            // Get the main screen to calculate coordinate conversion
-            // macOS uses bottom-left origin, but we receive top-left origin coordinates
-            let screen_height = NSScreen::mainScreen(mtm)
-                .map(|screen| screen.frame().size.height)
-                .unwrap_or(1080.0);
+                // Get the main screen to calculate coordinate conversion
+                // macOS uses bottom-left origin, but we receive top-left origin coordinates
+                let screen_height = NSScreen::mainScreen(mtm)
+                    .map(|screen| screen.frame().size.height)
+                    .unwrap_or(1080.0);
 
-            // Convert from top-left origin (Tauri/web style) to bottom-left origin (macOS style)
-            // In macOS coordinates: y_macos = screen_height - y_topleft - window_height
-            let macos_y = screen_height - y - height;
+                // Convert from top-left origin (Tauri/web style) to bottom-left origin (macOS style)
+                // In macOS coordinates: y_macos = screen_height - y_topleft - window_height
+                let macos_y = screen_height - y - height;
 
-            // Create the frame rect with the unconstrained position
-            let frame = NSRect::new(
-                objc2_foundation::NSPoint::new(x, macos_y),
-                objc2_foundation::NSSize::new(width, height),
-            );
+                // Create the frame rect with the unconstrained position
+                let frame = NSRect::new(
+                    objc2_foundation::NSPoint::new(x, macos_y),
+                    objc2_foundation::NSSize::new(width, height),
+                );
 
-            // Set the frame directly, bypassing any constraining
-            // The second parameter (display: false) prevents immediate redraw
-            // We'll redraw when we make the window visible
-            ns_window.setFrame_display(frame, false);
+                // Set the frame directly, bypassing any constraining
+                // The second parameter (display: false) prevents immediate redraw
+                // We'll redraw when we make the window visible
+                ns_window.setFrame_display(frame, false);
 
-            // Now make the window visible after positioning
-            // This prevents the window from appearing in the wrong position first
-            ns_window.orderFront(None);
+                // Now make the window visible after positioning
+                // This prevents the window from appearing in the wrong position first
+                ns_window.orderFront(None);
+            }));
+
+            if let Err(panic_info) = result {
+                eprintln!(
+                    "[Platform/macOS] set_unconstrained_position panicked (non-fatal): {:?}",
+                    panic_info
+                );
+                eprintln!("[Platform/macOS] Window will use default positioning");
+            }
         })
         .map_err(|e| Error::WindowCreation(format!("Failed to run on main thread: {}", e)))?;
 
