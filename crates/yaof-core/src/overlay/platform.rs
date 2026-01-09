@@ -39,63 +39,55 @@ pub fn configure_overlay(window: &WebviewWindow, click_through: bool) -> Result<
 /// macOS-specific overlay configuration
 #[cfg(target_os = "macos")]
 fn configure_overlay_macos(window: &WebviewWindow, click_through: bool) -> Result<(), Error> {
-    use objc2::rc::Retained;
-    use objc2_app_kit::{
-        NSAccessibility, NSAccessibilityFloatingWindowSubrole, NSMainMenuWindowLevel,
-        NSStatusWindowLevel, NSWindow, NSWindowCollectionBehavior, NSWindowLevel,
-    };
-
-    // Get the native NSWindow handle using the raw window handle
-    // Tauri's WebviewWindow provides access to the underlying NSWindow via raw-window-handle
+    // Get the native NSWindow handle pointer (safe from any thread)
     let ns_window_ptr = window
         .ns_window()
         .map_err(|e| Error::WindowCreation(format!("Failed to get NSWindow handle: {}", e)))?;
 
-    // Convert raw pointer to Retained<NSWindow>
-    // SAFETY: The pointer is valid as long as the window exists, and we're
-    // retaining it to ensure it stays valid during our operations
-    let ns_window: Retained<NSWindow> = unsafe { Retained::retain(ns_window_ptr as *mut NSWindow) }
-        .ok_or_else(|| Error::WindowCreation("NSWindow pointer was null".to_string()))?;
+    // Convert pointer to usize for thread-safe transfer
+    let ptr_addr = ns_window_ptr as usize;
 
-    // Set window level to status window level (25)
-    // This is above normal windows and floating windows, but below the menu bar (level 24)
-    // Status window level is appropriate for overlay widgets that should stay visible
-    // but not interfere with system UI
-    // CGWindowLevelForKey(kCGStatusWindowLevelKey) = 25
-    let status_window_level: NSWindowLevel = NSMainMenuWindowLevel;
-    ns_window.setLevel(status_window_level);
+    // Dispatch all NSWindow operations to the main thread
+    // macOS 15 (Sequoia) strictly enforces that window operations happen on the main thread
+    window
+        .run_on_main_thread(move || {
+            use objc2::rc::Retained;
+            use objc2_app_kit::{
+                NSAccessibility, NSAccessibilitySystemDialogSubrole, NSMainMenuWindowLevel,
+                NSWindow, NSWindowCollectionBehavior,
+            };
 
-    if click_through {
-        // For true click-through behavior, we need multiple settings:
-        // 1. Ignore all mouse events - clicks pass through to windows below
-        ns_window.setIgnoresMouseEvents(true);
+            // Convert usize back to pointer and retain
+            let ns_window: Option<Retained<NSWindow>> =
+                unsafe { Retained::retain(ptr_addr as *mut NSWindow) };
 
-        // 2. Don't accept mouse moved events - prevents hover tracking
-        ns_window.setAcceptsMouseMovedEvents(false);
+            let Some(ns_window) = ns_window else {
+                eprintln!("Failed to retain NSWindow pointer");
+                return;
+            };
 
-        // 3. Remove shadow - shadows can sometimes intercept clicks
-        ns_window.setHasShadow(false);
-    }
+            // Set window level to main menu level (24)
+            ns_window.setLevel(NSMainMenuWindowLevel);
 
-    // Set collection behavior for overlay windows:
-    // - CanJoinAllSpaces: Window appears on ALL virtual desktops/spaces
-    // - Stationary: Window stays in place during Mission Control/Exposé
-    // - IgnoresCycle: Doesn't appear in Cmd+Tab window switcher
-    // - FullScreenAuxiliary: Can appear alongside fullscreen apps
-    // - Transient: Window is transient and should NOT be managed by window managers (yabai, etc.)
-    let behavior = NSWindowCollectionBehavior::CanJoinAllSpaces
-        | NSWindowCollectionBehavior::Stationary
-        | NSWindowCollectionBehavior::IgnoresCycle
-        | NSWindowCollectionBehavior::FullScreenAuxiliary
-        | NSWindowCollectionBehavior::Transient;
+            if click_through {
+                ns_window.setIgnoresMouseEvents(true);
+                ns_window.setAcceptsMouseMovedEvents(false);
+                ns_window.setHasShadow(false);
+            }
 
-    ns_window.setCollectionBehavior(behavior);
+            // Set collection behavior for overlay windows
+            let behavior = NSWindowCollectionBehavior::CanJoinAllSpaces
+                | NSWindowCollectionBehavior::Stationary
+                | NSWindowCollectionBehavior::IgnoresCycle
+                | NSWindowCollectionBehavior::FullScreenAuxiliary
+                | NSWindowCollectionBehavior::Transient;
+            ns_window.setCollectionBehavior(behavior);
 
-    unsafe {
-        use objc2_app_kit::NSAccessibilitySystemDialogSubrole;
-
-        ns_window.setAccessibilitySubrole(Some(NSAccessibilitySystemDialogSubrole));
-    }
+            unsafe {
+                ns_window.setAccessibilitySubrole(Some(NSAccessibilitySystemDialogSubrole));
+            }
+        })
+        .map_err(|e| Error::WindowCreation(format!("Failed to run on main thread: {}", e)))?;
 
     Ok(())
 }
