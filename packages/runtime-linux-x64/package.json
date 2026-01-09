@@ -1,0 +1,15 @@
+{
+  "name": "@m4cs/yaof-runtime-linux-x64",
+  "version": "0.1.0",
+  "description": "YAOF Runtime binary for Linux x64",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yaof/yaof.git",
+    "directory": "packages/runtime-linux-x64"
+  },
+  "os": ["linux"],
+  "cpu": ["x64"],
+  "main": "index.js",
+  "files": ["bin", "index.js"]
+}

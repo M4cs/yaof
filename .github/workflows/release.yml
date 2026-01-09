@@ -1,0 +1,288 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g., 0.1.0)"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run (do not actually publish)"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Build runtime binaries for each platform
+  build-darwin-arm64:
+    name: Build macOS ARM64
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build runtime
+        run: bun run scripts/build-runtime.ts --target aarch64-apple-darwin
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-darwin-arm64
+          path: packages/runtime-darwin-arm64/bin/yaof-runtime
+          retention-days: 1
+
+  build-darwin-x64:
+    name: Build macOS x64
+    runs-on: macos-15-intel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build runtime
+        run: bun run scripts/build-runtime.ts --target x86_64-apple-darwin
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-darwin-x64
+          path: packages/runtime-darwin-x64/bin/yaof-runtime
+          retention-days: 1
+
+  build-linux-x64:
+    name: Build Linux x64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build runtime
+        run: bun run scripts/build-runtime.ts --target x86_64-unknown-linux-gnu
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-linux-x64
+          path: packages/runtime-linux-x64/bin/yaof-runtime
+          retention-days: 1
+
+  build-windows-x64:
+    name: Build Windows x64
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build runtime
+        run: bun run scripts/build-runtime.ts --target x86_64-pc-windows-msvc
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-win32-x64
+          path: packages/runtime-win32-x64/bin/yaof-runtime.exe
+          retention-days: 1
+
+  # Publish all packages to npm
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    needs:
+      - build-darwin-arm64
+      - build-darwin-x64
+      - build-linux-x64
+      - build-windows-x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js (for npm publish)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Download darwin-arm64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: runtime-darwin-arm64
+          path: packages/runtime-darwin-arm64/bin
+
+      - name: Download darwin-x64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: runtime-darwin-x64
+          path: packages/runtime-darwin-x64/bin
+
+      - name: Download linux-x64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: runtime-linux-x64
+          path: packages/runtime-linux-x64/bin
+
+      - name: Download windows-x64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: runtime-win32-x64
+          path: packages/runtime-win32-x64/bin
+
+      - name: Make binaries executable
+        run: |
+          chmod +x packages/runtime-darwin-arm64/bin/yaof-runtime
+          chmod +x packages/runtime-darwin-x64/bin/yaof-runtime
+          chmod +x packages/runtime-linux-x64/bin/yaof-runtime
+
+      - name: Update package versions
+        run: |
+          # Update version in all runtime packages
+          for pkg in runtime-darwin-arm64 runtime-darwin-x64 runtime-linux-x64 runtime-win32-x64; do
+            jq '.version = "${{ inputs.version }}"' packages/$pkg/package.json > tmp.json && mv tmp.json packages/$pkg/package.json
+          done
+
+          # Update CLI package version and its optional dependencies
+          jq '.version = "${{ inputs.version }}" | .optionalDependencies["@m4cs/yaof-runtime-darwin-arm64"] = "${{ inputs.version }}" | .optionalDependencies["@m4cs/yaof-runtime-darwin-x64"] = "${{ inputs.version }}" | .optionalDependencies["@m4cs/yaof-runtime-linux-x64"] = "${{ inputs.version }}" | .optionalDependencies["@m4cs/yaof-runtime-win32-x64"] = "${{ inputs.version }}"' packages/cli/package.json > tmp.json && mv tmp.json packages/cli/package.json
+
+          # Update SDK package version
+          jq '.version = "${{ inputs.version }}"' packages/sdk/package.json > tmp.json && mv tmp.json packages/sdk/package.json
+
+      - name: Build CLI
+        run: |
+          cd packages/cli
+          bun run build
+
+      - name: Build SDK
+        run: |
+          cd packages/sdk
+          bun run build
+
+      - name: Publish runtime-darwin-arm64
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --access public
+        working-directory: packages/runtime-darwin-arm64
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish runtime-darwin-x64
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --access public
+        working-directory: packages/runtime-darwin-x64
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish runtime-linux-x64
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --access public
+        working-directory: packages/runtime-linux-x64
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish runtime-win32-x64
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --access public
+        working-directory: packages/runtime-win32-x64
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish CLI
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --access public
+        working-directory: packages/cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish SDK
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --access public
+        working-directory: packages/sdk
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Dry run - show what would be published
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "=== DRY RUN - Would publish the following packages ==="
+          echo ""
+          echo "Runtime packages:"
+          for pkg in runtime-darwin-arm64 runtime-darwin-x64 runtime-linux-x64 runtime-win32-x64; do
+            echo "  - @m4cs/yaof-$pkg@${{ inputs.version }}"
+            ls -la packages/$pkg/bin/
+          done
+          echo ""
+          echo "CLI package:"
+          echo "  - @m4cs/yaof-cli@${{ inputs.version }}"
+          echo ""
+          echo "SDK package:"
+          echo "  - @m4cs/yaof-sdk@${{ inputs.version }}"

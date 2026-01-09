@@ -1,0 +1,43 @@
+{
+  "name": "@m4cs/yaof-cli",
+  "version": "0.1.0",
+  "description": "CLI for YAOF - Yet Another Overlay Framework",
+  "type": "module",
+  "bin": {
+    "yaof": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target node",
+    "dev": "bun run ./src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "lint": "echo 'No lint configured'",
+    "prepublishOnly": "bun run build",
+    "watch": "bun build ./src/index.ts --outdir ./dist --target node --watch"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.7.0",
+    "commander": "^12.0.0",
+    "fs-extra": "^11.0.0",
+    "picocolors": "^1.0.0"
+  },
+  "optionalDependencies": {
+    "@m4cs/yaof-runtime-darwin-arm64": "0.1.0",
+    "@m4cs/yaof-runtime-darwin-x64": "0.1.0",
+    "@m4cs/yaof-runtime-linux-x64": "0.1.0",
+    "@m4cs/yaof-runtime-win32-x64": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/fs-extra": "^11.0.0",
+    "typescript": "^5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yaof/yaof.git",
+    "directory": "packages/cli"
+  },
+  "license": "MIT",
+  "keywords": ["yaof", "overlay", "framework", "cli", "tauri"]
+}

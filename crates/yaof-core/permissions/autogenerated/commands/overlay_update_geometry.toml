@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-overlay-update-geometry"
+description = "Enables the overlay_update_geometry command without any pre-configured scope."
+commands.allow = ["overlay_update_geometry"]
+
+[[permission]]
+identifier = "deny-overlay-update-geometry"
+description = "Denies the overlay_update_geometry command without any pre-configured scope."
+commands.deny = ["overlay_update_geometry"]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-service-register"
+description = "Enables the service_register command without any pre-configured scope."
+commands.allow = ["service_register"]
+
+[[permission]]
+identifier = "deny-service-register"
+description = "Denies the service_register command without any pre-configured scope."
+commands.deny = ["service_register"]

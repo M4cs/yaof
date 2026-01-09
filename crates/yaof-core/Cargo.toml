@@ -1,0 +1,39 @@
+[package]
+name = "yaof-core"
+version = "0.1.0"
+edition = "2024"
+links = "yaof"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
+
+[dependencies]
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+indexmap = { version = "2", features = ["serde"] }
+thiserror = "2.0.17"
+directories = "6.0.0"
+dirs = "6.0.0"
+libloading = "0.9.0"
+tauri-plugin-store = "2.4.1"
+jsonschema = "0.29"
+# System services dependencies
+sysinfo = "0.32"
+souvlaki = "0.7"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+tauri = { workspace = true, features = ["macos-private-api"] }
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-app-kit = "0.3"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+tauri = { workspace = true }
+windows = { version = "0.59", features = [
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_Foundation",
+] }
+
+[target.'cfg(not(any(target_os = "macos", target_os = "windows")))'.dependencies]
+tauri = { workspace = true }

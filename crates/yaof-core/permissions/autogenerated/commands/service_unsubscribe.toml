@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-service-unsubscribe"
+description = "Enables the service_unsubscribe command without any pre-configured scope."
+commands.allow = ["service_unsubscribe"]
+
+[[permission]]
+identifier = "deny-service-unsubscribe"
+description = "Denies the service_unsubscribe command without any pre-configured scope."
+commands.deny = ["service_unsubscribe"]

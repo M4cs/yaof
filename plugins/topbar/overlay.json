@@ -1,0 +1,224 @@
+{
+  "id": "topbar",
+  "name": "Topbar",
+  "version": "0.1.0",
+  "entry": "dist/index.html",
+  "overlays": {
+    "main": {
+      "x": 0,
+      "y": -8,
+      "width": 1920,
+      "height": 40,
+      "defaultPosition": "top-left",
+      "clickThrough": true,
+      "frameless": true
+    }
+  },
+  "settings": {
+    "schema": {
+      "darkMode": {
+        "type": "boolean",
+        "label": "Dark Mode",
+        "description": "",
+        "default": true
+      },
+      "clockFormat": {
+        "type": "select",
+        "label": "Clock Format",
+        "description": "",
+        "options": [
+          {
+            "value": "HH:MM",
+            "label": "HH:MM"
+          },
+          {
+            "value": "HH:MM:SS",
+            "label": "HH:MM:SS"
+          },
+          {
+            "value": "HH:MM:SS:MS",
+            "label": "HH:MM:SS:MS"
+          }
+        ],
+        "default": "HH:MM"
+      },
+      "showClock": {
+        "type": "boolean",
+        "label": "Show Clock",
+        "description": "",
+        "default": true
+      },
+      "refreshInterval": {
+        "type": "number",
+        "label": "Refresh Interval",
+        "description": "",
+        "default": 1000
+      },
+      "leftBarWidth": {
+        "type": "number",
+        "label": "Left Bar Width",
+        "description": "",
+        "default": 230
+      },
+      "rightBarWidth": {
+        "type": "number",
+        "label": "Right Bar Width",
+        "description": "",
+        "default": 230
+      },
+      "widgetGap": {
+        "type": "number",
+        "label": "Widget Gap",
+        "description": "",
+        "default": 3
+      },
+      "leftWidgets": {
+        "type": "orderedList",
+        "label": "Left Widgets",
+        "description": "",
+        "options": [
+          {
+            "value": "ActiveWindow",
+            "label": "Active Window"
+          },
+          {
+            "value": "Clock",
+            "label": "Clock"
+          },
+          {
+            "value": "CPU",
+            "label": "CPU"
+          },
+          {
+            "value": "Network",
+            "label": "Network"
+          },
+          {
+            "value": "NowPlaying",
+            "label": "Now Playing"
+          },
+          {
+            "value": "Signal",
+            "label": "Signal"
+          },
+          {
+            "value": "Tickers",
+            "label": "Tickers"
+          }
+        ],
+        "default": [
+          "Clock",
+          "CPU",
+          "ActiveWindow"
+        ]
+      },
+      "rightWidgets": {
+        "type": "orderedList",
+        "label": "Right Widgets",
+        "description": "",
+        "options": [
+          {
+            "value": "ActiveWindow",
+            "label": "Active Window"
+          },
+          {
+            "value": "Clock",
+            "label": "Clock"
+          },
+          {
+            "value": "CPU",
+            "label": "CPU"
+          },
+          {
+            "value": "Network",
+            "label": "Network"
+          },
+          {
+            "value": "NowPlaying",
+            "label": "Now Playing"
+          },
+          {
+            "value": "Signal",
+            "label": "Signal"
+          },
+          {
+            "value": "Tickers",
+            "label": "Tickers"
+          }
+        ],
+        "default": [
+          "Tickers",
+          "NowPlaying",
+          "Network"
+        ]
+      },
+      "tickers": {
+        "type": "orderedList",
+        "label": "Tickers",
+        "description": "",
+        "options": [
+          {
+            "value": "ETH",
+            "label": "ETH"
+          },
+          {
+            "value": "BTC",
+            "label": "BTC"
+          },
+          {
+            "value": "SOL",
+            "label": "SOL"
+          }
+        ],
+        "default": [
+          "ETH",
+          "BTC",
+          "SOL"
+        ]
+      },
+      "useMarquee": {
+        "type": "boolean",
+        "label": "Use Marquee",
+        "description": "",
+        "default": true
+      },
+      "marqueeSpeed": {
+        "type": "number",
+        "label": "Marquee Speed",
+        "description": "",
+        "default": 20
+      },
+      "marqueeDirection": {
+        "type": "select",
+        "label": "Marquee Direction",
+        "description": "",
+        "options": [
+          {
+            "value": "left",
+            "label": "left"
+          },
+          {
+            "value": "right",
+            "label": "right"
+          }
+        ],
+        "default": "left"
+      },
+      "marqueeDelay": {
+        "type": "number",
+        "label": "Marquee Delay",
+        "description": "",
+        "default": 0
+      },
+      "tickerPriceInterval": {
+        "type": "number",
+        "label": "Ticker Price Interval",
+        "description": "",
+        "default": 60
+      }
+    }
+  },
+  "provides": [],
+  "consumes": [],
+  "permissions": []
+}

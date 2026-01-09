@@ -1,0 +1,29 @@
+[package]
+name = "yaof-runtime"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "yaof_runtime"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+yaof-core = { path = "../yaof-core" }
+tauri = { workspace = true, features = ["tray-icon", "image-png"] }
+tauri-plugin-store = "2"
+tauri-plugin-dialog = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+rust-embed = "8.9.0"
+dirs = "5"
+tokio = { workspace = true, features = ["time"] }
+notify = "7"
+notify-debouncer-mini = "0.5"
+tauri-plugin-global-shortcut = "2.3.1"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-global-shortcut = "2"

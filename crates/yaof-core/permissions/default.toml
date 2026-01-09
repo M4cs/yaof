@@ -1,0 +1,30 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = "Default permissions for the YAOF core plugin"
+permissions = [
+  "allow-spawn-overlay",
+  "allow-close-overlay",
+  "allow-overlay-set-click-through",
+  "allow-overlay-update-geometry",
+  "allow-overlay-set-always-on-top",
+  "allow-overlay-exists",
+  "allow-overlay-set-visible",
+  "allow-list-overlays",
+  "allow-service-register",
+  "allow-service-unregister",
+  "allow-service-list-providers",
+  "allow-service-subscribe",
+  "allow-service-unsubscribe",
+  "allow-service-broadcast",
+  "allow-plugin-list",
+  "allow-plugin-get",
+  "allow-plugin-install-local",
+  "allow-plugin-uninstall",
+  "allow-plugin-settings-get",
+  "allow-plugin-settings-set",
+  "allow-plugin-settings-get-all",
+  "allow-plugin-settings-set-all",
+  "allow-plugin-settings-delete",
+  "allow-plugin-settings-clear",
+]
