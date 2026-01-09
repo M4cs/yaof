@@ -56,10 +56,7 @@ fn configure_overlay_macos(window: &WebviewWindow, click_through: bool) -> Resul
     println!("[Platform/macOS] configure_overlay_macos starting...");
 
     use objc2::rc::Retained;
-    use objc2_app_kit::{
-        NSAccessibility, NSAccessibilityFloatingWindowSubrole, NSMainMenuWindowLevel,
-        NSStatusWindowLevel, NSWindow, NSWindowCollectionBehavior, NSWindowLevel,
-    };
+    use objc2_app_kit::{NSAccessibility, NSWindow, NSWindowCollectionBehavior};
 
     // Get the native NSWindow handle using the raw window handle
     // Tauri's WebviewWindow provides access to the underlying NSWindow via raw-window-handle
@@ -80,15 +77,18 @@ fn configure_overlay_macos(window: &WebviewWindow, click_through: bool) -> Resul
         .ok_or_else(|| Error::WindowCreation("NSWindow pointer was null".to_string()))?;
     println!("[Platform/macOS] Retained<NSWindow> created successfully");
 
-    // Set window level to status window level (25)
-    // This is above normal windows and floating windows, but below the menu bar (level 24)
-    // Status window level is appropriate for overlay widgets that should stay visible
-    // but not interfere with system UI
-    // CGWindowLevelForKey(kCGStatusWindowLevelKey) = 25
-    println!("[Platform/macOS] Setting window level...");
-    let status_window_level: NSWindowLevel = NSMainMenuWindowLevel;
-    ns_window.setLevel(status_window_level);
-    println!("[Platform/macOS] Window level set");
+    // Set window level to floating window level (3)
+    // This is above normal windows but below system UI elements like the menu bar
+    // Using NSFloatingWindowLevel instead of NSMainMenuWindowLevel (24) or NSStatusWindowLevel (25)
+    // because those higher levels can cause crashes on some macOS systems, especially:
+    // - MacBooks with notches (M1/M2/M3 Pro/Max models)
+    // - Certain macOS versions that are more protective of menu bar area
+    // NSFloatingWindowLevel (3) is safer and still keeps overlays above normal windows
+    println!("[Platform/macOS] Setting window level to NSFloatingWindowLevel...");
+    // NSFloatingWindowLevel = 3, which is above normal windows but below panels and menus
+    use objc2_app_kit::NSFloatingWindowLevel;
+    ns_window.setLevel(NSFloatingWindowLevel);
+    println!("[Platform/macOS] Window level set to floating (level 3)");
 
     if click_through {
         println!("[Platform/macOS] Applying click-through settings...");
