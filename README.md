@@ -4,6 +4,8 @@ YAOF is a cross-platform overlay framework that lets you create beautiful, easil
 
 ## yaof is currently in development. In order to use it, you'll need to build it from source.
 
+### [Preliminary Docs Available Here](https://yaof.gitbook.com/docs)
+
 ## Requirements
 
 - Rust toolchain (install via [rustup](https://rustup.rs/))
