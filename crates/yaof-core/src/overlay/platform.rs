@@ -62,7 +62,6 @@ fn configure_overlay_macos(window: &WebviewWindow, click_through: bool) -> Resul
                 unsafe { Retained::retain(ptr_addr as *mut NSWindow) };
 
             let Some(ns_window) = ns_window else {
-                eprintln!("Failed to retain NSWindow pointer");
                 return;
             };
 
@@ -144,7 +143,6 @@ pub fn set_unconstrained_position(
                 unsafe { Retained::retain(ptr_addr as *mut NSWindow) };
 
             let Some(ns_window) = ns_window else {
-                eprintln!("Failed to retain NSWindow pointer");
                 return;
             };
 
