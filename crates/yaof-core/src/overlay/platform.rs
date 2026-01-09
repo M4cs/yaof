@@ -19,14 +19,28 @@ use crate::Error;
 /// - Doesn't appear in window switchers
 /// - Proper click-through handling when enabled
 pub fn configure_overlay(window: &WebviewWindow, click_through: bool) -> Result<(), Error> {
+    println!(
+        "[Platform] configure_overlay called, click_through: {}",
+        click_through
+    );
+
     #[cfg(target_os = "macos")]
-    configure_overlay_macos(window, click_through)?;
+    {
+        println!("[Platform] Running macOS-specific configuration...");
+        configure_overlay_macos(window, click_through)?;
+        println!("[Platform] macOS configuration completed");
+    }
 
     #[cfg(target_os = "windows")]
-    configure_overlay_windows(window, click_through)?;
+    {
+        println!("[Platform] Running Windows-specific configuration...");
+        configure_overlay_windows(window, click_through)?;
+        println!("[Platform] Windows configuration completed");
+    }
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
+        println!("[Platform] No platform-specific configuration needed");
         // Linux and other platforms - no special configuration needed
         // The always_on_top setting from Tauri should be sufficient
         let _ = window;
@@ -39,6 +53,8 @@ pub fn configure_overlay(window: &WebviewWindow, click_through: bool) -> Result<
 /// macOS-specific overlay configuration
 #[cfg(target_os = "macos")]
 fn configure_overlay_macos(window: &WebviewWindow, click_through: bool) -> Result<(), Error> {
+    println!("[Platform/macOS] configure_overlay_macos starting...");
+
     use objc2::rc::Retained;
     use objc2_app_kit::{
         NSAccessibility, NSAccessibilityFloatingWindowSubrole, NSMainMenuWindowLevel,
@@ -47,34 +63,47 @@ fn configure_overlay_macos(window: &WebviewWindow, click_through: bool) -> Resul
 
     // Get the native NSWindow handle using the raw window handle
     // Tauri's WebviewWindow provides access to the underlying NSWindow via raw-window-handle
+    println!("[Platform/macOS] Getting NSWindow handle...");
     let ns_window_ptr = window
         .ns_window()
         .map_err(|e| Error::WindowCreation(format!("Failed to get NSWindow handle: {}", e)))?;
+    println!(
+        "[Platform/macOS] NSWindow handle obtained: {:?}",
+        ns_window_ptr
+    );
 
     // Convert raw pointer to Retained<NSWindow>
     // SAFETY: The pointer is valid as long as the window exists, and we're
     // retaining it to ensure it stays valid during our operations
+    println!("[Platform/macOS] Converting to Retained<NSWindow>...");
     let ns_window: Retained<NSWindow> = unsafe { Retained::retain(ns_window_ptr as *mut NSWindow) }
         .ok_or_else(|| Error::WindowCreation("NSWindow pointer was null".to_string()))?;
+    println!("[Platform/macOS] Retained<NSWindow> created successfully");
 
     // Set window level to status window level (25)
     // This is above normal windows and floating windows, but below the menu bar (level 24)
     // Status window level is appropriate for overlay widgets that should stay visible
     // but not interfere with system UI
     // CGWindowLevelForKey(kCGStatusWindowLevelKey) = 25
+    println!("[Platform/macOS] Setting window level...");
     let status_window_level: NSWindowLevel = NSMainMenuWindowLevel;
     ns_window.setLevel(status_window_level);
+    println!("[Platform/macOS] Window level set");
 
     if click_through {
+        println!("[Platform/macOS] Applying click-through settings...");
         // For true click-through behavior, we need multiple settings:
         // 1. Ignore all mouse events - clicks pass through to windows below
         ns_window.setIgnoresMouseEvents(true);
+        println!("[Platform/macOS]   - setIgnoresMouseEvents(true)");
 
         // 2. Don't accept mouse moved events - prevents hover tracking
         ns_window.setAcceptsMouseMovedEvents(false);
+        println!("[Platform/macOS]   - setAcceptsMouseMovedEvents(false)");
 
         // 3. Remove shadow - shadows can sometimes intercept clicks
         ns_window.setHasShadow(false);
+        println!("[Platform/macOS]   - setHasShadow(false)");
     }
 
     // Set collection behavior for overlay windows:
@@ -83,6 +112,7 @@ fn configure_overlay_macos(window: &WebviewWindow, click_through: bool) -> Resul
     // - IgnoresCycle: Doesn't appear in Cmd+Tab window switcher
     // - FullScreenAuxiliary: Can appear alongside fullscreen apps
     // - Transient: Window is transient and should NOT be managed by window managers (yabai, etc.)
+    println!("[Platform/macOS] Setting collection behavior...");
     let behavior = NSWindowCollectionBehavior::CanJoinAllSpaces
         | NSWindowCollectionBehavior::Stationary
         | NSWindowCollectionBehavior::IgnoresCycle
@@ -90,13 +120,17 @@ fn configure_overlay_macos(window: &WebviewWindow, click_through: bool) -> Resul
         | NSWindowCollectionBehavior::Transient;
 
     ns_window.setCollectionBehavior(behavior);
+    println!("[Platform/macOS] Collection behavior set");
 
+    println!("[Platform/macOS] Setting accessibility subrole...");
     unsafe {
         use objc2_app_kit::NSAccessibilitySystemDialogSubrole;
 
         ns_window.setAccessibilitySubrole(Some(NSAccessibilitySystemDialogSubrole));
     }
+    println!("[Platform/macOS] Accessibility subrole set");
 
+    println!("[Platform/macOS] configure_overlay_macos completed successfully");
     Ok(())
 }
 

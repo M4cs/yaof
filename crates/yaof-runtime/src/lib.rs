@@ -16,17 +16,27 @@ pub use protocol::PLUGIN_PROTOCOL;
 
 /// Helper function to spawn enabled overlays
 async fn spawn_overlays(app_handle: &AppHandle) {
+    println!("[YAOF] spawn_overlays called");
     println!("[YAOF] Spawning enabled overlays...");
     match yaof_core::AutostartManager::spawn_enabled_overlays(app_handle) {
         Ok(spawned) => {
+            println!(
+                "[YAOF] spawn_enabled_overlays returned Ok with {} overlay(s)",
+                spawned.len()
+            );
             if !spawned.is_empty() {
-                println!("[YAOF] Auto-started {} overlay(s)", spawned.len());
+                println!(
+                    "[YAOF] Auto-started {} overlay(s): {:?}",
+                    spawned.len(),
+                    spawned
+                );
             }
         }
         Err(e) => {
-            eprintln!("[YAOF] Failed to auto-start overlays: {}", e);
+            eprintln!("[YAOF] ERROR: Failed to auto-start overlays: {}", e);
         }
     }
+    println!("[YAOF] spawn_overlays completed");
 }
 
 /// Extract embedded core plugins to the plugins directory.

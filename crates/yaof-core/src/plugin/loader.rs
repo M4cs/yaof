@@ -96,20 +96,37 @@ impl PluginLoader {
     }
 
     pub fn scan_plugins(&mut self) -> Result<Vec<PluginManifest>, Error> {
+        println!("[PluginLoader] scan_plugins called");
+        println!("[PluginLoader] Plugins directory: {:?}", self.plugins_dir);
+
         let mut manifests = Vec::new();
         self.installed.clear();
 
         if !self.plugins_dir.exists() {
+            println!("[PluginLoader] Plugins directory does not exist, returning empty list");
             return Ok(manifests);
         }
 
+        println!("[PluginLoader] Scanning plugins directory...");
         for entry in fs::read_dir(&self.plugins_dir)? {
             let entry = entry?;
             let path = entry.path();
+            println!("[PluginLoader] Found entry: {:?}", path);
 
             if path.is_dir() {
+                println!("[PluginLoader]   -> Is directory, attempting to load manifest...");
                 match self.load_manifest(&path) {
                     Ok(manifest) => {
+                        println!(
+                            "[PluginLoader]   -> Loaded manifest for plugin: {} ({})",
+                            manifest.name, manifest.id
+                        );
+                        println!("[PluginLoader]      - entry: {}", manifest.entry);
+                        println!(
+                            "[PluginLoader]      - overlays: {:?}",
+                            manifest.overlays.keys().collect::<Vec<_>>()
+                        );
+                        println!("[PluginLoader]      - core: {}", manifest.core);
                         let id = manifest.id.clone();
                         self.installed.insert(
                             id,
@@ -122,12 +139,19 @@ impl PluginLoader {
                         manifests.push(manifest);
                     }
                     Err(e) => {
+                        println!("[PluginLoader]   -> ERROR: Failed to load manifest: {}", e);
                         eprintln!("Warning: Failed to load plugin at {:?}: {}", path, e);
                     }
                 }
+            } else {
+                println!("[PluginLoader]   -> Not a directory, skipping");
             }
         }
 
+        println!(
+            "[PluginLoader] Scan complete. Found {} plugins",
+            manifests.len()
+        );
         Ok(manifests)
     }
 

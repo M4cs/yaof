@@ -29,31 +29,50 @@ impl AutostartManager {
     /// Spawn all enabled overlays from installed plugins.
     /// This should be called after the app is fully initialized.
     pub fn spawn_enabled_overlays(app: &AppHandle) -> Result<Vec<String>, String> {
+        println!("[Autostart] Starting spawn_enabled_overlays...");
         let mut spawned_ids = Vec::new();
 
         // Get app data directory for reading settings
+        println!("[Autostart] Getting app data directory...");
         let app_data_dir = app
             .path()
             .app_data_dir()
             .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+        println!("[Autostart] App data dir: {:?}", app_data_dir);
 
         // Collect all overlays to spawn
+        println!("[Autostart] Collecting overlays to spawn...");
         let overlays_to_spawn = Self::collect_overlays_to_spawn(app, &app_data_dir)?;
+        println!(
+            "[Autostart] Found {} overlays to spawn",
+            overlays_to_spawn.len()
+        );
 
         // Get screen info for position calculations
         let screen = Self::get_primary_screen_info(app);
+        println!("[Autostart] Screen info: {:?}", screen);
 
         // Spawn each enabled overlay
+        println!("[Autostart] Locking overlay manager...");
         let overlay_state = app.state::<OverlayState>();
         let mut manager = overlay_state
             .0
             .lock()
             .map_err(|e| format!("Failed to lock overlay manager: {}", e))?;
+        println!("[Autostart] Overlay manager locked successfully");
 
         for info in overlays_to_spawn {
+            println!(
+                "[Autostart] Attempting to spawn overlay: {}/{}",
+                info.plugin_id, info.overlay_id
+            );
+            println!("[Autostart]   - is_core: {}", info.is_core);
+            println!("[Autostart]   - definition: {:?}", info.definition);
+            println!("[Autostart]   - settings: {:?}", info.settings);
+
             match Self::spawn_overlay(&mut manager, &info, &screen) {
                 Ok(id) => {
-                    println!("[Autostart] Spawned overlay: {}", id);
+                    println!("[Autostart] Successfully spawned overlay: {}", id);
                     spawned_ids.push(id);
                 }
                 Err(e) => {
@@ -65,6 +84,10 @@ impl AutostartManager {
             }
         }
 
+        println!(
+            "[Autostart] Finished spawning overlays. Total spawned: {}",
+            spawned_ids.len()
+        );
         Ok(spawned_ids)
     }
 
