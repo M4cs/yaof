@@ -51,7 +51,7 @@ impl NetworkService {
         // Check if we have an active network connection using scutil
         let output = Command::new("scutil").args(["--nwi"]).output();
 
-        let connected = match output {
+        let connected = match &output {
             Ok(out) => {
                 let stdout = String::from_utf8_lossy(&out.stdout);
                 stdout.contains("IPv4") || stdout.contains("IPv6")
@@ -63,53 +63,34 @@ impl NetworkService {
             return NetworkStatus::default();
         }
 
-        // Try to get WiFi info using airport command
-        let wifi_output = Command::new("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport")
-            .args(["-I"])
+        // Check if connected via WiFi using ipconfig (works on macOS 15+)
+        // BSSID presence indicates WiFi connection
+        let ipconfig_output = Command::new("ipconfig")
+            .args(["getsummary", "en0"])
             .output();
 
-        match wifi_output {
+        let is_wifi = match &ipconfig_output {
             Ok(out) => {
                 let stdout = String::from_utf8_lossy(&out.stdout);
-
-                // Check if WiFi is connected
-                if stdout.contains("SSID:") {
-                    // Parse signal strength (agrCtlRSSI)
-                    let strength = stdout
-                        .lines()
-                        .find(|line| line.contains("agrCtlRSSI:"))
-                        .and_then(|line| {
-                            line.split(':')
-                                .nth(1)
-                                .and_then(|v| v.trim().parse::<i32>().ok())
-                        })
-                        .map(|rssi| {
-                            // Convert RSSI to percentage (typical range: -100 to -30 dBm)
-                            let clamped = rssi.clamp(-100, -30);
-                            ((clamped + 100) as f32 / 70.0 * 100.0) as u8
-                        });
-
-                    NetworkStatus {
-                        connected: true,
-                        strength,
-                        connection_type: "wifi".to_string(),
-                    }
-                } else {
-                    // Connected but not via WiFi, assume ethernet
-                    NetworkStatus {
-                        connected: true,
-                        strength: None,
-                        connection_type: "ethernet".to_string(),
-                    }
-                }
+                stdout.contains("BSSID")
             }
-            Err(_) => {
-                // Couldn't check WiFi, but we know we're connected
-                NetworkStatus {
-                    connected: true,
-                    strength: None,
-                    connection_type: "ethernet".to_string(),
-                }
+            Err(_) => false,
+        };
+
+        if is_wifi {
+            // WiFi connected - signal strength detection is unreliable on macOS 15
+            // since the airport command is deprecated. Show as connected without strength.
+            NetworkStatus {
+                connected: true,
+                strength: Some(100), // Default to full strength for now
+                connection_type: "wifi".to_string(),
+            }
+        } else {
+            // Connected but not via WiFi, assume ethernet
+            NetworkStatus {
+                connected: true,
+                strength: None,
+                connection_type: "ethernet".to_string(),
             }
         }
     }

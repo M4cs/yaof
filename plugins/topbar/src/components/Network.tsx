@@ -2,7 +2,6 @@ import { useSystemService } from "@m4cs/yaof-sdk";
 import { Fragment, useMemo } from "react";
 import {
   NetworkIcon,
-  NetworkSlashIcon,
   WifiHighIcon,
   WifiLowIcon,
   WifiMediumIcon,
@@ -15,29 +14,28 @@ export function Network() {
 
   // Format network signal display
   const getSignalDisplay = useMemo(() => {
-    if (!data?.network.connected) {
+    // Data not loaded yet
+    if (!data) {
       return <Fragment />;
     }
+    // Network disconnected
     if (!data.network.connected) {
       return <WifiSlashIcon size={16} />;
     }
     if (data.network.connection_type === "wifi") {
-      if (data.network.strength === null || data.network.strength < 5) {
+      const strength = data.network.strength ?? 0;
+      if (strength < 25) {
         return <WifiNoneIcon size={16} />;
-      } else if (data.network.strength > 5 && data.network.strength < 50) {
+      } else if (strength < 50) {
         return <WifiLowIcon size={16} />;
-      } else if (data.network.strength >= 50 && data.network.strength < 75) {
+      } else if (strength < 75) {
         return <WifiMediumIcon size={16} />;
-      } else if (data.network.strength >= 75) {
+      } else {
         return <WifiHighIcon size={16} />;
       }
-    } else {
-      if (data.network.strength === null || data.network.strength < 5) {
-        return <NetworkSlashIcon size={16} />;
-      } else {
-        return <NetworkIcon size={16} />;
-      }
     }
+    // Ethernet - no signal strength, just show connected icon
+    return <NetworkIcon size={16} />;
   }, [data]);
 
   return <div className="w-fit text-foreground">{getSignalDisplay}</div>;
