@@ -1,0 +1,19 @@
+{
+  "id": "yaof-core-settings",
+  "name": "YAOF Settings",
+  "version": "0.1.0",
+  "entry": "dist/index.html",
+  "core": true,
+  "overlays": {
+    "main": {
+      "width": 900,
+      "height": 650,
+      "defaultPosition": "center",
+      "clickThrough": false,
+      "frameless": true
+    }
+  },
+  "provides": [],
+  "consumes": [],
+  "permissions": ["plugins:read", "plugins:write", "settings:read", "settings:write"]
+}

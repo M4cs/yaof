@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "radix-vega",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/index.css",
+    "baseColor": "zinc",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@yaof/ui/components",
+    "utils": "@yaof/ui/lib/utils",
+    "ui": "@yaof/ui/components/ui",
+    "lib": "@yaof/ui/lib",
+    "hooks": "@yaof/ui/hooks"
+  },
+  "iconLibrary": "phosphor"
+}

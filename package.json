@@ -1,0 +1,38 @@
+{
+  "name": "yaof",
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.6",
+    "@types/bun": "latest",
+    "turbo": "^2.7.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "workspaces": [
+    "packages/*",
+    "plugins/*"
+  ],
+  "scripts": {
+    "build": "bun run build:ts && bun run build:rust",
+    "build:ts": "turbo run build",
+    "build:rust": "cargo build --release",
+    "build:runtime": "bun run scripts/build-runtime.ts",
+    "build:runtime:all": "bun run scripts/build-runtime.ts --all",
+    "postinstall": "bun run build:ts",
+    "dev": "turbo run dev",
+    "clean": "rm -rf **/*/dist && rm -rf **/*/node_modules && turbo run clean && cargo clean",
+    "check": "turbo run typecheck && cargo check",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test && cargo test",
+    "test:rust": "cargo test",
+    "test:ts": "turbo run test",
+    "runtime:dev": "tauri dev -c crates/yaof-runtime/tauri.conf.json",
+    "runtime:build": "tauri build -c crates/yaof-runtime/tauri.conf.json",
+    "publish:dry": "bun run scripts/publish.ts",
+    "publish:npm": "bun run scripts/publish.ts --execute",
+    "yaof": "bun run ./packages/cli/src/index.ts",
+    "watch": "turbo run watch"
+  },
+  "packageManager": "bun@1.3.2"
+}

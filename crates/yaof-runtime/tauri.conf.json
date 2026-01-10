@@ -1,0 +1,34 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "YAOF",
+  "version": "0.1.0",
+  "identifier": "com.yaof.runtime",
+  "build": {
+    "beforeDevCommand": "bun build:ts && turbo run dev --filter=./plugins/core-settings",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "bun build:ts",
+    "frontendDist": "../../plugins/core-settings/dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": null
+    },
+    "trayIcon": {
+      "iconPath": "icons/32x32.png",
+      "iconAsTemplate": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

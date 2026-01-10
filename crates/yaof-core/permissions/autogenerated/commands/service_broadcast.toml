@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-service-broadcast"
+description = "Enables the service_broadcast command without any pre-configured scope."
+commands.allow = ["service_broadcast"]
+
+[[permission]]
+identifier = "deny-service-broadcast"
+description = "Denies the service_broadcast command without any pre-configured scope."
+commands.deny = ["service_broadcast"]
