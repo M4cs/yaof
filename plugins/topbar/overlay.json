@@ -6,7 +6,7 @@
   "overlays": {
     "main": {
       "x": 0,
-      "y": -8,
+      "y": 0,
       "width": 1920,
       "height": 40,
       "defaultPosition": "top-left",
@@ -82,6 +82,10 @@
             "label": "Active Window"
           },
           {
+            "value": "ClaudeUsage",
+            "label": "Claude Usage"
+          },
+          {
             "value": "Clock",
             "label": "Clock"
           },
@@ -107,9 +111,10 @@
           }
         ],
         "default": [
-          "Clock",
+          "ActiveWindow",
+          "Network",
           "CPU",
-          "ActiveWindow"
+          "NowPlaying"
         ]
       },
       "rightWidgets": {
@@ -120,6 +125,10 @@
           {
             "value": "ActiveWindow",
             "label": "Active Window"
+          },
+          {
+            "value": "ClaudeUsage",
+            "label": "Claude Usage"
           },
           {
             "value": "Clock",
@@ -148,8 +157,8 @@
         ],
         "default": [
           "Tickers",
-          "NowPlaying",
-          "Network"
+          "ClaudeUsage",
+          "Clock"
         ]
       },
       "tickers": {

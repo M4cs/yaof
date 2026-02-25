@@ -23,6 +23,7 @@ export interface TopbarServiceData {
 
 export enum Widget {
   ActiveWindow = "ActiveWindow",
+  ClaudeUsage = "ClaudeUsage",
   Clock = "Clock",
   CPU = "CPU",
   Network = "Network",

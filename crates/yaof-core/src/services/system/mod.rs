@@ -7,6 +7,7 @@
 //! - Active desktop
 //! - Now playing media
 
+mod claude_usage;
 mod cpu;
 mod desktop;
 mod media;
@@ -21,6 +22,7 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::RwLock;
 use tokio::time::interval;
 
+pub use claude_usage::ClaudeUsageService;
 pub use cpu::CpuService;
 pub use desktop::DesktopService;
 pub use media::MediaService;
@@ -44,6 +46,7 @@ pub struct SystemStatus {
     pub window: WindowStatus,
     pub desktop: DesktopStatus,
     pub media: MediaStatus,
+    pub claude_usage: ClaudeUsageStatus,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -92,6 +95,15 @@ pub struct MediaStatus {
     pub app_name: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct ClaudeUsageStatus {
+    pub session_utilization: f64,
+    pub session_resets_at: String,
+    pub weekly_utilization: f64,
+    pub weekly_resets_at: String,
+    pub available: bool,
+}
+
 /// Manager for all system services
 pub struct SystemServiceManager {
     cpu_service: CpuService,
@@ -99,6 +111,7 @@ pub struct SystemServiceManager {
     window_service: WindowService,
     desktop_service: DesktopService,
     media_service: MediaService,
+    claude_usage_service: ClaudeUsageService,
 }
 
 impl SystemServiceManager {
@@ -109,6 +122,7 @@ impl SystemServiceManager {
             window_service: WindowService::new(),
             desktop_service: DesktopService::new(),
             media_service: MediaService::new(),
+            claude_usage_service: ClaudeUsageService::new(),
         }
     }
 
@@ -120,6 +134,7 @@ impl SystemServiceManager {
             window: self.window_service.get_status(),
             desktop: self.desktop_service.get_status(),
             media: self.media_service.get_status(),
+            claude_usage: self.claude_usage_service.get_status(),
         }
     }
 }
@@ -167,6 +182,7 @@ impl SystemServiceHandle {
                 let _ = app.emit("yaof:system:window", &status.window);
                 let _ = app.emit("yaof:system:desktop", &status.desktop);
                 let _ = app.emit("yaof:system:media", &status.media);
+                let _ = app.emit("yaof:system:claude_usage", &status.claude_usage);
             }
         });
     }
