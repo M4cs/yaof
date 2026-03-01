@@ -7,6 +7,7 @@
 //! - Active desktop
 //! - Now playing media
 
+mod battery;
 mod claude_usage;
 mod cpu;
 mod desktop;
@@ -65,6 +66,7 @@ pub(crate) fn wait_with_timeout(
     }
 }
 
+pub use battery::BatteryService;
 pub use claude_usage::ClaudeUsageService;
 pub use cpu::CpuService;
 pub use desktop::DesktopService;
@@ -90,6 +92,7 @@ pub struct SystemStatus {
     pub desktop: DesktopStatus,
     pub media: MediaStatus,
     pub claude_usage: ClaudeUsageStatus,
+    pub battery: BatteryStatus,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -147,6 +150,14 @@ pub struct ClaudeUsageStatus {
     pub available: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct BatteryStatus {
+    pub percentage: u8,
+    pub charging: bool,
+    pub time_remaining: Option<String>,
+    pub available: bool,
+}
+
 /// Manager for all system services
 pub struct SystemServiceManager {
     cpu_service: CpuService,
@@ -155,6 +166,7 @@ pub struct SystemServiceManager {
     desktop_service: DesktopService,
     media_service: MediaService,
     claude_usage_service: ClaudeUsageService,
+    battery_service: BatteryService,
 }
 
 impl SystemServiceManager {
@@ -166,6 +178,7 @@ impl SystemServiceManager {
             desktop_service: DesktopService::new(),
             media_service: MediaService::new(),
             claude_usage_service: ClaudeUsageService::new(),
+            battery_service: BatteryService::new(),
         }
     }
 
@@ -178,6 +191,7 @@ impl SystemServiceManager {
             desktop: self.desktop_service.get_status(),
             media: self.media_service.get_status(),
             claude_usage: self.claude_usage_service.get_status(),
+            battery: self.battery_service.get_status(),
         }
     }
 }
@@ -240,6 +254,7 @@ impl SystemServiceHandle {
                 let _ = app.emit("yaof:system:desktop", &status.desktop);
                 let _ = app.emit("yaof:system:media", &status.media);
                 let _ = app.emit("yaof:system:claude_usage", &status.claude_usage);
+                let _ = app.emit("yaof:system:battery", &status.battery);
             }
         });
     }

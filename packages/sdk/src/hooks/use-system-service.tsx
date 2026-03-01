@@ -32,6 +32,12 @@ export interface SystemStatus {
     position_ms: number | null;
     app_name: string | null;
   };
+  battery: {
+    percentage: number;
+    charging: boolean;
+    time_remaining: string | null;
+    available: boolean;
+  };
 }
 
 export interface UseSystemServiceReturn<T> {

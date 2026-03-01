@@ -1,4 +1,5 @@
 import { ActiveWindow } from "./components/ActiveWindow";
+import { Battery } from "./components/Battery";
 import { ClaudeUsage } from "./components/ClaudeUsage";
 import { Clock } from "./components/Clock";
 import { CPU } from "./components/CPU";
@@ -18,6 +19,8 @@ function App() {
     (componentConfig: Widget[]) => {
       return componentConfig.map((widget, idx) => {
         switch (widget) {
+          case Widget.Battery:
+            return <Battery key={idx} />;
           case Widget.ClaudeUsage:
             return <ClaudeUsage key={idx} />;
           case Widget.Clock:
