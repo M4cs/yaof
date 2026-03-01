@@ -50,6 +50,10 @@ impl ClaudeUsageService {
         let output = Command::new("curl")
             .args([
                 "-s",
+                "--max-time",
+                "10",
+                "--connect-timeout",
+                "5",
                 "-H",
                 &format!("Authorization: Bearer {}", token),
                 "-H",

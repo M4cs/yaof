@@ -22,6 +22,49 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::RwLock;
 use tokio::time::interval;
 
+/// Wait for a child process with a timeout in seconds.
+/// Kills the process if it exceeds the timeout.
+pub(crate) fn wait_with_timeout(
+    mut child: std::process::Child,
+    timeout_secs: u64,
+) -> std::io::Result<std::process::Output> {
+    use std::time::Instant;
+
+    let deadline = Instant::now() + Duration::from_secs(timeout_secs);
+    loop {
+        match child.try_wait()? {
+            Some(status) => {
+                let stdout = child.stdout.map_or_else(Vec::new, |mut s| {
+                    let mut buf = Vec::new();
+                    std::io::Read::read_to_end(&mut s, &mut buf).ok();
+                    buf
+                });
+                let stderr = child.stderr.map_or_else(Vec::new, |mut s| {
+                    let mut buf = Vec::new();
+                    std::io::Read::read_to_end(&mut s, &mut buf).ok();
+                    buf
+                });
+                return Ok(std::process::Output {
+                    status,
+                    stdout,
+                    stderr,
+                });
+            }
+            None => {
+                if Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "process timed out",
+                    ));
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        }
+    }
+}
+
 pub use claude_usage::ClaudeUsageService;
 pub use cpu::CpuService;
 pub use desktop::DesktopService;
@@ -165,10 +208,24 @@ impl SystemServiceHandle {
             loop {
                 interval.tick().await;
 
-                // Collect status from all services
-                let status = {
-                    let mut manager = handle.inner.write().await;
-                    manager.collect_status()
+                // Collect status in a blocking task so subprocess calls
+                // (osascript, curl, security, scutil) don't block the async runtime
+                let handle_clone = handle.clone();
+                let status = match tokio::task::spawn_blocking(move || {
+                    // Use try_write to avoid deadlocking if a previous tick is still running
+                    match handle_clone.inner.try_write() {
+                        Ok(mut manager) => Some(manager.collect_status()),
+                        Err(_) => None,
+                    }
+                })
+                .await
+                {
+                    Ok(Some(status)) => status,
+                    Ok(None) => continue, // Previous tick still running, skip
+                    Err(e) => {
+                        eprintln!("[YAOF] System service tick panicked: {}", e);
+                        continue;
+                    }
                 };
 
                 // Emit the combined status event
