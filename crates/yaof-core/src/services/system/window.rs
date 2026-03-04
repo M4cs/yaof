@@ -5,7 +5,7 @@
 //! - Application name
 //! - Process ID
 
-use super::WindowStatus;
+use super::{wait_with_timeout, WindowStatus};
 
 /// Service for monitoring focused window
 pub struct WindowService {
@@ -62,7 +62,12 @@ impl WindowService {
             end tell
         "#;
 
-        let output = Command::new("osascript").args(["-e", script]).output();
+        let output = Command::new("osascript")
+            .args(["-e", script])
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .and_then(|child| wait_with_timeout(child, 3));
 
         match output {
             Ok(out) if out.status.success() => {

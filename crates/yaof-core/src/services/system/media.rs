@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 
 use souvlaki::{MediaControlEvent, MediaControls, PlatformConfig};
 
-use super::MediaStatus;
+use super::{wait_with_timeout, MediaStatus};
 
 /// Cached media state from souvlaki events
 #[derive(Debug, Clone, Default)]
@@ -188,7 +188,12 @@ impl MediaService {
             return output
         "#;
 
-        let output = Command::new("osascript").args(["-e", script]).output();
+        let output = Command::new("osascript")
+            .args(["-e", script])
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .and_then(|child| wait_with_timeout(child, 3));
 
         match output {
             Ok(out) if out.status.success() => {

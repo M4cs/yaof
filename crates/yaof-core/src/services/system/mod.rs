@@ -7,6 +7,8 @@
 //! - Active desktop
 //! - Now playing media
 
+mod battery;
+mod claude_usage;
 mod cpu;
 mod desktop;
 mod media;
@@ -21,6 +23,51 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::RwLock;
 use tokio::time::interval;
 
+/// Wait for a child process with a timeout in seconds.
+/// Kills the process if it exceeds the timeout.
+pub(crate) fn wait_with_timeout(
+    mut child: std::process::Child,
+    timeout_secs: u64,
+) -> std::io::Result<std::process::Output> {
+    use std::time::Instant;
+
+    let deadline = Instant::now() + Duration::from_secs(timeout_secs);
+    loop {
+        match child.try_wait()? {
+            Some(status) => {
+                let stdout = child.stdout.map_or_else(Vec::new, |mut s| {
+                    let mut buf = Vec::new();
+                    std::io::Read::read_to_end(&mut s, &mut buf).ok();
+                    buf
+                });
+                let stderr = child.stderr.map_or_else(Vec::new, |mut s| {
+                    let mut buf = Vec::new();
+                    std::io::Read::read_to_end(&mut s, &mut buf).ok();
+                    buf
+                });
+                return Ok(std::process::Output {
+                    status,
+                    stdout,
+                    stderr,
+                });
+            }
+            None => {
+                if Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "process timed out",
+                    ));
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        }
+    }
+}
+
+pub use battery::BatteryService;
+pub use claude_usage::ClaudeUsageService;
 pub use cpu::CpuService;
 pub use desktop::DesktopService;
 pub use media::MediaService;
@@ -44,6 +91,8 @@ pub struct SystemStatus {
     pub window: WindowStatus,
     pub desktop: DesktopStatus,
     pub media: MediaStatus,
+    pub claude_usage: ClaudeUsageStatus,
+    pub battery: BatteryStatus,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -92,6 +141,23 @@ pub struct MediaStatus {
     pub app_name: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct ClaudeUsageStatus {
+    pub session_utilization: f64,
+    pub session_resets_at: String,
+    pub weekly_utilization: f64,
+    pub weekly_resets_at: String,
+    pub available: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct BatteryStatus {
+    pub percentage: u8,
+    pub charging: bool,
+    pub time_remaining: Option<String>,
+    pub available: bool,
+}
+
 /// Manager for all system services
 pub struct SystemServiceManager {
     cpu_service: CpuService,
@@ -99,6 +165,8 @@ pub struct SystemServiceManager {
     window_service: WindowService,
     desktop_service: DesktopService,
     media_service: MediaService,
+    claude_usage_service: ClaudeUsageService,
+    battery_service: BatteryService,
 }
 
 impl SystemServiceManager {
@@ -109,6 +177,8 @@ impl SystemServiceManager {
             window_service: WindowService::new(),
             desktop_service: DesktopService::new(),
             media_service: MediaService::new(),
+            claude_usage_service: ClaudeUsageService::new(),
+            battery_service: BatteryService::new(),
         }
     }
 
@@ -120,6 +190,8 @@ impl SystemServiceManager {
             window: self.window_service.get_status(),
             desktop: self.desktop_service.get_status(),
             media: self.media_service.get_status(),
+            claude_usage: self.claude_usage_service.get_status(),
+            battery: self.battery_service.get_status(),
         }
     }
 }
@@ -150,10 +222,24 @@ impl SystemServiceHandle {
             loop {
                 interval.tick().await;
 
-                // Collect status from all services
-                let status = {
-                    let mut manager = handle.inner.write().await;
-                    manager.collect_status()
+                // Collect status in a blocking task so subprocess calls
+                // (osascript, curl, security, scutil) don't block the async runtime
+                let handle_clone = handle.clone();
+                let status = match tokio::task::spawn_blocking(move || {
+                    // Use try_write to avoid deadlocking if a previous tick is still running
+                    match handle_clone.inner.try_write() {
+                        Ok(mut manager) => Some(manager.collect_status()),
+                        Err(_) => None,
+                    }
+                })
+                .await
+                {
+                    Ok(Some(status)) => status,
+                    Ok(None) => continue, // Previous tick still running, skip
+                    Err(e) => {
+                        eprintln!("[YAOF] System service tick panicked: {}", e);
+                        continue;
+                    }
                 };
 
                 // Emit the combined status event
@@ -167,6 +253,8 @@ impl SystemServiceHandle {
                 let _ = app.emit("yaof:system:window", &status.window);
                 let _ = app.emit("yaof:system:desktop", &status.desktop);
                 let _ = app.emit("yaof:system:media", &status.media);
+                let _ = app.emit("yaof:system:claude_usage", &status.claude_usage);
+                let _ = app.emit("yaof:system:battery", &status.battery);
             }
         });
     }
