@@ -47,7 +47,8 @@ impl DesktopService {
 
     #[cfg(target_os = "macos")]
     fn get_status_macos(&self) -> DesktopStatus {
-        use std::process::Command;
+        use std::process::{Command, Stdio};
+        use super::wait_with_timeout;
 
         // macOS doesn't have a straightforward way to get the current Space number
         // We can use AppleScript with System Events, but it requires accessibility permissions
@@ -62,7 +63,12 @@ impl DesktopService {
             end tell
         "#;
 
-        let output = Command::new("osascript").args(["-e", script]).output();
+        let output = Command::new("osascript")
+            .args(["-e", script])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .and_then(|child| wait_with_timeout(child, 3));
 
         match output {
             Ok(out) if out.status.success() => {
@@ -76,7 +82,10 @@ impl DesktopService {
                 // Fallback: try to read from defaults
                 let _defaults_output = Command::new("defaults")
                     .args(["read", "com.apple.dock", "workspaces"])
-                    .output();
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .and_then(|child| wait_with_timeout(child, 2));
 
                 // If we can't determine the space, return 1 as default
                 DesktopStatus {

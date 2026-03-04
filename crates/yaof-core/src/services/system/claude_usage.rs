@@ -47,6 +47,9 @@ impl ClaudeUsageService {
     fn fetch_usage(&self) -> Result<ClaudeUsageStatus, String> {
         let token = self.get_access_token()?;
 
+        use std::process::Stdio;
+        use super::wait_with_timeout;
+
         let output = Command::new("curl")
             .args([
                 "-s",
@@ -62,7 +65,10 @@ impl ClaudeUsageService {
                 "anthropic-beta: oauth-2025-04-20",
                 "https://api.anthropic.com/api/oauth/usage",
             ])
-            .output()
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .and_then(|child| wait_with_timeout(child, 12))
             .map_err(|e| format!("curl failed: {}", e))?;
 
         if !output.status.success() {
@@ -91,6 +97,9 @@ impl ClaudeUsageService {
     }
 
     fn get_access_token(&self) -> Result<String, String> {
+        use std::process::Stdio;
+        use super::wait_with_timeout;
+
         let output = Command::new("security")
             .args([
                 "find-generic-password",
@@ -98,7 +107,10 @@ impl ClaudeUsageService {
                 "Claude Code-credentials",
                 "-w",
             ])
-            .output()
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .and_then(|child| wait_with_timeout(child, 3))
             .map_err(|e| format!("security command failed: {}", e))?;
 
         if !output.status.success() {

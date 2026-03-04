@@ -46,10 +46,16 @@ impl NetworkService {
 
     #[cfg(target_os = "macos")]
     fn get_status_macos(&self) -> NetworkStatus {
-        use std::process::Command;
+        use std::process::{Command, Stdio};
+        use super::wait_with_timeout;
 
         // Check if we have an active network connection using scutil
-        let output = Command::new("scutil").args(["--nwi"]).output();
+        let output = Command::new("scutil")
+            .args(["--nwi"])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .and_then(|child| wait_with_timeout(child, 3));
 
         let connected = match &output {
             Ok(out) => {
@@ -67,7 +73,10 @@ impl NetworkService {
         // BSSID presence indicates WiFi connection
         let ipconfig_output = Command::new("ipconfig")
             .args(["getsummary", "en0"])
-            .output();
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .and_then(|child| wait_with_timeout(child, 3));
 
         let is_wifi = match &ipconfig_output {
             Ok(out) => {
